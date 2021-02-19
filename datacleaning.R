@@ -40,13 +40,23 @@ monthly_ridesummary<- cbind(monthly_total,cust,sub)
 monthly_ridesummary <- monthly_ridesummary[c(-3,-5)]
 
 
+# Code to test the boxplots
+tripbymonth <- myMergedData%>%select(Usertype,Month,Tripduration)
+
+
+
+ggplot(data = tripbymonth,aes(x = Month,y = Tripduration,color=Usertype))+geom_boxplot()+coord_flip()
+
+
 # Melting Dataframe for alternative thing
 test<- melt(monthly_ridesummary)
 
+library(here)
 
 fwrite(myMergedData,here("bikeshare-healthyrides/bikes.csv"))
 fwrite(monthly_ridesummary,here("bikeshare-healthyrides/ridesummary.csv"))
 fwrite(test,here("bikeshare-healthyrides/test.csv"))
+fwrite(tripbymonth ,here("bikeshare-healthyrides/tripbymonth .csv"))
 
 
 
