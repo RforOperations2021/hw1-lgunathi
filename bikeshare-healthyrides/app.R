@@ -14,8 +14,12 @@ tripbmonth <- fread("tripbymonth .csv")
 # UI for the bikeshare application 
 ui <- fluidPage(
   
+  
+  
   # Application title -----------------------------------------------
   titlePanel("Healthy Ride"),
+  
+  
   
   # Sidebar layout with a input and output definitions
   sidebarLayout(
@@ -52,7 +56,14 @@ ui <- fluidPage(
                   label = "Number of bins:",
                   min = 1,
                   max = 10,
-                  value = 5)
+                  value = 5),
+      #Select which months the user wants to plots
+      checkboxGroupInput(inputId = "selected_type",
+                         label= "Select Months",
+                         choices = c("Jan","Feb","Mar","Apr","May","Jun","Jun","Jul","Aug","Sep","Oct","Nov","Dec"),
+                         selected = "Jan"
+        
+      )
       
     
 ),
@@ -65,10 +76,10 @@ ui <- fluidPage(
       plotOutput(outputId = "scatterplot"),
       
       #boxplot
-#      plotOutput(outputId = "boxplot"),
+      plotOutput(outputId = "distPlot"),
 
       # Output: Histogram ----
-      plotOutput(outputId = "distPlot"),
+      plotOutput(outputId = "tripboxplot"),
       
       # Show data table ---------------------------------------------
       DT::dataTableOutput(outputId = "datasummary")  
@@ -79,12 +90,27 @@ ui <- fluidPage(
 # Define server function required to create the scatterplot ---------
 server <- function(input, output) {
   
-
+  months_subset <- reactive({
+    req(input$selected_type)
+    filter(tripbmonth,Month %in% input$selected_type)
+    
+    
+  })
+  
+  
+  #Create Boxplot
+  output$tripboxplot <- renderPlot({
+    ggplot(data = months_subset(),aes(x = Month,y = Tripduration,color=Usertype))+
+    xlab("Months")+ylab("Trip Duration in Minutes")+
+    geom_boxplot()+coord_flip()
+    
+    
+  })
   
   # Create scatterplot object the plotOutput function is expecting --
   output$scatterplot <- renderPlot({
    ggplot(data = ridesummary, aes_string(x = "Month", y = input$z,group=1)) +
-    geom_point(size=1.5)+geom_line(color="red",size=0.8)+ylab("Number of Rides")+
+    geom_point(size=1.8)+geom_line(color="red",size=0.6)+ylab("Number of Rides")+
     ggtitle("Healthy-Ride Rental Usage in 2020")+theme(title = element_text(face = "bold"))
   
       
