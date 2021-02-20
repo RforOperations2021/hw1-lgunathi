@@ -9,28 +9,29 @@ ridesummary<- fread("ridesummary.csv")
 rawdata <- fread("bikes.csv")
 ridesummary$Month <- factor(ridesummary$Month, levels = month.abb) 
 tripbmonth <- fread("tripbymonth .csv")
-
+stations <- fread("most_used_st.csv")
 
 # UI for the bikeshare application 
 ui <- fluidPage(
-  
-  
+  theme = shinythemes::shinytheme("journal"),
   
   # Application title -----------------------------------------------
-  titlePanel("Healthy Ride"),
+  titlePanel("Healthy Ride - Pittsburgh Bike Share"),
   
   
   
   # Sidebar layout with a input and output definitions
   sidebarLayout(
     
+    
+    
     # Inputs: Select variables to plot ------------------------------
     sidebarPanel(
       
       
       # Select variable for y-axis ----------------------------------
-
-  
+      img(src = "hride.jpg", height = 140, width = 250),
+      
       selectInput(inputId = "z",
                   label = "Type of User",
                   choices = c("total","subscriber","customer"),
@@ -42,21 +43,18 @@ ui <- fluidPage(
                     label = "Show Summary Data",
                     value = TRUE),
       
+      div((HTML("<strong>The following datasets were used for producing these visualizations and can be downloaded
+               for your own use</strong>")),style = "color:green"),
       # Input: Choose dataset ----
       selectInput("dataset", "Choose a dataset:",
-                  choices = c("ridesummary", "rawdata")),
+                  choices = c("ridesummary", "rawdata","stationdata")),
       
       
       #Adding a Download Button
       downloadButton("downloadData", "Download"),
       
       
-      # Adding a Slider
-      sliderInput(inputId = "bins",
-                  label = "Number of bins:",
-                  min = 1,
-                  max = 10,
-                  value = 5),
+    
       #Select which months the user wants to plots
       checkboxGroupInput(inputId = "selected_type",
                          label= "Select Months",
@@ -65,8 +63,11 @@ ui <- fluidPage(
         
       )
       
+      
     
 ),
+
+
     
   
     
@@ -75,11 +76,12 @@ ui <- fluidPage(
     mainPanel(
       plotOutput(outputId = "scatterplot"),
       
-      #boxplot
-      plotOutput(outputId = "distPlot"),
-
+  
       # Output: Histogram ----
       plotOutput(outputId = "tripboxplot"),
+      
+      #barplot of stations
+      plotOutput(outputId = "stbarplot"),
       
       # Show data table ---------------------------------------------
       DT::dataTableOutput(outputId = "datasummary")  
@@ -97,12 +99,31 @@ server <- function(input, output) {
     
   })
   
+  station_subset <- reactive({
+    req(input$selected_type)
+    filter(stations,Month %in% input$selected_type)
+    
+    
+  })
+  
   
   #Create Boxplot
   output$tripboxplot <- renderPlot({
     ggplot(data = months_subset(),aes(x = Month,y = Tripduration,color=Usertype))+
     xlab("Months")+ylab("Trip Duration in Minutes")+
-    geom_boxplot()+coord_flip()
+    geom_boxplot()+coord_flip()+ggtitle("Trip Duration Between Customers and Subscribers")+theme(title = element_text(face = "bold"))+
+    scale_color_manual(values=c("#8fad93", "#009cb5"))
+    
+    
+  })
+  
+  
+  #Create Barchart
+  output$stbarplot <- renderPlot({
+    ggplot(data = station_subset(),aes(x=`To station name`,y = n))+
+    geom_bar(stat="identity",fill="#ae7c5e")+xlab("Destination Station")+ylab("Number of rides")+
+    coord_flip()+
+    ggtitle("Busiest Destination Stations by Month")+theme(title = element_text(face = "bold"))
     
     
   })
@@ -110,23 +131,14 @@ server <- function(input, output) {
   # Create scatterplot object the plotOutput function is expecting --
   output$scatterplot <- renderPlot({
    ggplot(data = ridesummary, aes_string(x = "Month", y = input$z,group=1)) +
-    geom_point(size=1.8)+geom_line(color="red",size=0.6)+ylab("Number of Rides")+
+    geom_point(size=1.8)+geom_line(color="blue",size=0.6)+ylab("Number of Rides")+
     ggtitle("Healthy-Ride Rental Usage in 2020")+theme(title = element_text(face = "bold"))
-  
+   
       
     
   })
   
-  output$distPlot <- renderPlot({
-    
-    x    <- rawdata$Tripduration
-    bins <- seq(min(x), max(x), length.out = input$bins)
-    
-    hist(x, breaks = bins, col = "#75AADB", border = "white",
-         xlab = "Trip Durations in minutes",
-         main = "Histogram of waiting times")
-  
-  })
+ 
   
   
   
@@ -146,7 +158,8 @@ server <- function(input, output) {
   datasetInput <- reactive({
     switch(input$dataset,
            "ridesummary" = ridesummary,
-           "rawdata" = rawdata)
+           "rawdata" = rawdata,
+           "stationdata"=stations)
   })
   output$downloadData <- downloadHandler(
     filename = function() {
